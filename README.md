@@ -18,6 +18,12 @@ npm run dev
 
 ## Running via Docker Compose
 
+Populate `.env` with a listening port:
+```bash
+LISTEN_PORT=2222
+```
+
+Then, run via Docker Compose:
 ```bash
 docker compose up --build
 ```
