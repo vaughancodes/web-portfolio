@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from "react";
+import { flushSync } from "react-dom";
 import { tabs, type TabName } from "./data";
 import { colors } from "./theme";
 import { TabBar } from "./components/TabBar";
@@ -59,7 +60,6 @@ const ANIM_MS = 450;
 const ANIM_TRANSITION = `transform ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
 const MAXIMIZE_MS = 350;
 const MAXIMIZE_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
-const MAXIMIZE_TRANSITION = `transform ${MAXIMIZE_MS}ms ${MAXIMIZE_EASE}`;
 
 function BgLayer() {
   return (
@@ -83,7 +83,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabName>("About");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [windowState, setWindowState] = useState<WindowState>("normal");
-  const [maximizeAnimating, setMaximizeAnimating] = useState(false);
+  const preMaxRef = useRef({ x: 0, y: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
 
   const isMaximized = windowState === "maximized";
@@ -121,10 +122,56 @@ export default function App() {
   }, []);
 
   const handleMaximize = useCallback(() => {
-    setMaximizeAnimating(true);
-    setWindowState((prev) => (prev === "maximized" ? "normal" : "maximized"));
-    setOffset({ x: 0, y: 0 });
-  }, []);
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    // FLIP: First — capture current visual bounds
+    const first = el.getBoundingClientRect();
+
+    // Update layout synchronously
+    flushSync(() => {
+      if (isMaximized) {
+        setOffset(preMaxRef.current);
+        setWindowState("normal");
+      } else {
+        preMaxRef.current = { x: offset.x, y: offset.y };
+        setOffset({ x: 0, y: 0 });
+        setWindowState("maximized");
+      }
+    });
+
+    // FLIP: Last — capture new visual bounds
+    const last = el.getBoundingClientRect();
+
+    // FLIP: Invert — transform to make new layout look like old layout
+    const sx = first.width / last.width;
+    const sy = first.height / last.height;
+    const tx = (first.left - last.left) / SCALE;
+    const ty = (first.top - last.top) / SCALE;
+
+    el.style.transition = "none";
+    el.style.transformOrigin = "top left";
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${sx}, ${sy})`;
+
+    // Force reflow so browser registers the starting position
+    el.getBoundingClientRect();
+
+    // FLIP: Play — animate to final layout
+    const finalTransform = isMaximized
+      ? `translate(${preMaxRef.current.x}px, ${preMaxRef.current.y}px)`
+      : "translate(0px, 0px)";
+
+    el.style.transition = `transform ${MAXIMIZE_MS}ms ${MAXIMIZE_EASE}`;
+    el.style.transform = finalTransform;
+
+    const cleanup = () => {
+      el.style.transition = "";
+      el.style.transformOrigin = "";
+      el.style.transform = "";
+      el.removeEventListener("transitionend", cleanup);
+    };
+    el.addEventListener("transitionend", cleanup);
+  }, [isMaximized, offset]);
 
   const [restoreReady, setRestoreReady] = useState(false);
 
@@ -152,14 +199,6 @@ export default function App() {
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [windowState]);
-
-  // Clear maximize animation flag after transition
-  useEffect(() => {
-    if (maximizeAnimating) {
-      const t = setTimeout(() => setMaximizeAnimating(false), MAXIMIZE_MS);
-      return () => clearTimeout(t);
-    }
-  }, [maximizeAnimating]);
 
   const navigate = useCallback(
     (dir: -1 | 1) => {
@@ -208,24 +247,18 @@ export default function App() {
     wrapperTransform = "none";
   }
 
-  // Apply maximize transition when animating (both maximize and unmaximize)
-  if (maximizeAnimating && (windowState === "normal" || windowState === "maximized")) {
-    wrapperTransition = MAXIMIZE_TRANSITION;
-  }
-
   return (
     <div
       style={{
-        height: "100vh",
-        width: "100vw",
+        height: `calc(100vh / ${SCALE})`,
+        width: `calc(100vw / ${SCALE})`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         background: "#0C0E14",
         padding: isMaximized ? 0 : "24px",
-        transition: `padding ${MAXIMIZE_MS}ms ${MAXIMIZE_EASE}`,
         transform: `scale(${SCALE})`,
-        transformOrigin: "center center",
+        transformOrigin: "top left",
         position: "relative",
         overflow: "hidden",
       }}
@@ -284,6 +317,7 @@ export default function App() {
       {/* Terminal window (normal / maximized) */}
       {showWindow && (
         <div
+          ref={wrapperRef}
           style={{
             transform: wrapperTransform,
             transition: wrapperTransition,
