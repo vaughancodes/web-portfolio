@@ -16,13 +16,11 @@ npm install
 npm run dev
 ```
 
-## Production (Docker)
+## Running via Docker Compose
 
 ```bash
 docker compose up --build
 ```
-
-The site will be available at `http://localhost:8411`.
 
 ## Project Structure
 
