@@ -32,8 +32,12 @@ export function TerminalChrome({
         flexDirection: "column",
         borderRadius: isMaximized ? 0 : 10,
         overflow: "hidden",
-        border: isMaximized ? "none" : `1px solid ${colors.subtle}`,
-        boxShadow: isMaximized ? "none" : "0 25px 60px rgba(0,0,0,0.5)",
+        border: `1px solid ${isMaximized ? "transparent" : colors.subtle}`,
+        boxShadow: isMaximized
+          ? "0 25px 60px rgba(0,0,0,0)"
+          : "0 25px 60px rgba(0,0,0,0.5)",
+        transition:
+          "border-radius 350ms cubic-bezier(0.4,0,0.2,1), box-shadow 350ms cubic-bezier(0.4,0,0.2,1), border-color 350ms cubic-bezier(0.4,0,0.2,1)",
         background: colors.bg,
         position: "relative",
         zIndex: 1,

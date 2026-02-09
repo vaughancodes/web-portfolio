@@ -50,13 +50,16 @@ const tabComponents: Record<TabName, React.FC> = {
   Contact: ContactTab,
 };
 
-const SCALE = 1.25;
+const SCALE = 1.0;
 
 type WindowState = "normal" | "minimizing" | "minimized" | "restoring" | "maximized" | "closed";
 
 const DOCK_TRANSFORM = "translate(0px, 30vh) scale(0.08)";
 const ANIM_MS = 450;
 const ANIM_TRANSITION = `transform ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+const MAXIMIZE_MS = 350;
+const MAXIMIZE_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+const MAXIMIZE_TRANSITION = `transform ${MAXIMIZE_MS}ms ${MAXIMIZE_EASE}`;
 
 function BgLayer() {
   return (
@@ -80,6 +83,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabName>("About");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [windowState, setWindowState] = useState<WindowState>("normal");
+  const [maximizeAnimating, setMaximizeAnimating] = useState(false);
   const drag = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
 
   const isMaximized = windowState === "maximized";
@@ -117,6 +121,7 @@ export default function App() {
   }, []);
 
   const handleMaximize = useCallback(() => {
+    setMaximizeAnimating(true);
     setWindowState((prev) => (prev === "maximized" ? "normal" : "maximized"));
     setOffset({ x: 0, y: 0 });
   }, []);
@@ -147,6 +152,14 @@ export default function App() {
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [windowState]);
+
+  // Clear maximize animation flag after transition
+  useEffect(() => {
+    if (maximizeAnimating) {
+      const t = setTimeout(() => setMaximizeAnimating(false), MAXIMIZE_MS);
+      return () => clearTimeout(t);
+    }
+  }, [maximizeAnimating]);
 
   const navigate = useCallback(
     (dir: -1 | 1) => {
@@ -195,6 +208,11 @@ export default function App() {
     wrapperTransform = "none";
   }
 
+  // Apply maximize transition when animating (both maximize and unmaximize)
+  if (maximizeAnimating && (windowState === "normal" || windowState === "maximized")) {
+    wrapperTransition = MAXIMIZE_TRANSITION;
+  }
+
   return (
     <div
       style={{
@@ -205,6 +223,7 @@ export default function App() {
         justifyContent: "center",
         background: "#0C0E14",
         padding: isMaximized ? 0 : "24px",
+        transition: `padding ${MAXIMIZE_MS}ms ${MAXIMIZE_EASE}`,
         transform: `scale(${SCALE})`,
         transformOrigin: "center center",
         position: "relative",
