@@ -65,3 +65,22 @@ a:hover {
   from { opacity: 1; transform: translateX(-50%) scale(1); }
   to   { opacity: 0; transform: translateX(-50%) scale(0.8); }
 }
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
+  html, body, #root {
+    overflow: auto;
+  }
+
+  .mobile-tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .contact-label {
+    width: 90px !important;
+  }
+}

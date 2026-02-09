@@ -11,6 +11,7 @@ import { EducationTab } from "./components/EducationTab";
 import { ContactTab } from "./components/ContactTab";
 import { TerminalChrome } from "./components/TerminalChrome";
 import { Footer } from "./components/Footer";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 const TITLE = "vaughan.codes";
 const CURSOR = "\u2588"; // █ block cursor
@@ -51,7 +52,7 @@ const tabComponents: Record<TabName, React.FC> = {
   Contact: ContactTab,
 };
 
-const SCALE = 0.8;
+const DESKTOP_SCALE = 0.8;
 
 type WindowState = "normal" | "minimizing" | "minimized" | "restoring" | "maximized" | "closed";
 
@@ -60,6 +61,8 @@ const ANIM_MS = 450;
 const ANIM_TRANSITION = `transform ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
 const MAXIMIZE_MS = 350;
 const MAXIMIZE_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+const SWIPE_THRESHOLD = 50;
 
 function BgLayer() {
   return (
@@ -80,25 +83,38 @@ function BgLayer() {
 
 export default function App() {
   useTitleTypewriter();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabName>("About");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [windowState, setWindowState] = useState<WindowState>("normal");
   const preMaxRef = useRef({ x: 0, y: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
+
+  const scale = isMobile ? 1 : DESKTOP_SCALE;
+
+  // Auto-maximize on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setWindowState("maximized");
+      setOffset({ x: 0, y: 0 });
+    }
+  }, [isMobile]);
 
   const isMaximized = windowState === "maximized";
 
   const handleTitleBarMouseDown = useCallback((e: MouseEvent) => {
-    if (isMaximized) return;
+    if (isMaximized || isMobile) return;
     drag.current = { startX: e.clientX, startY: e.clientY, ox: offset.x, oy: offset.y };
-  }, [offset, isMaximized]);
+  }, [offset, isMaximized, isMobile]);
 
   useEffect(() => {
+    if (isMobile) return;
     function onMove(e: globalThis.MouseEvent) {
       if (!drag.current) return;
-      const dx = (e.clientX - drag.current.startX) / SCALE;
-      const dy = (e.clientY - drag.current.startY) / SCALE;
+      const dx = (e.clientX - drag.current.startX) / scale;
+      const dy = (e.clientY - drag.current.startY) / scale;
       setOffset({ x: drag.current.ox + dx, y: drag.current.oy + dy });
     }
     function onUp() {
@@ -110,18 +126,21 @@ export default function App() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, []);
+  }, [isMobile, scale]);
 
   const handleClose = useCallback(() => {
+    if (isMobile) return;
     setWindowState("closed");
     window.close();
-  }, []);
+  }, [isMobile]);
 
   const handleMinimize = useCallback(() => {
+    if (isMobile) return;
     setWindowState("minimizing");
-  }, []);
+  }, [isMobile]);
 
   const handleMaximize = useCallback(() => {
+    if (isMobile) return;
     const el = wrapperRef.current;
     if (!el) return;
 
@@ -146,8 +165,12 @@ export default function App() {
     // FLIP: Invert — transform to make new layout look like old layout
     const sx = first.width / last.width;
     const sy = first.height / last.height;
-    const tx = (first.left - last.left) / SCALE;
-    const ty = (first.top - last.top) / SCALE;
+    // `last` includes React's post-flushSync transform. Since the FLIP inverse
+    // replaces (not composes with) that transform, we must add back the offset
+    // React applied, otherwise the inverse lands at the wrong position.
+    const reactOffset = isMaximized ? preMaxRef.current : { x: 0, y: 0 };
+    const tx = (first.left - last.left) / scale + reactOffset.x;
+    const ty = (first.top - last.top) / scale + reactOffset.y;
 
     el.style.transition = "none";
     el.style.transformOrigin = "top left";
@@ -167,11 +190,14 @@ export default function App() {
     const cleanup = () => {
       el.style.transition = "";
       el.style.transformOrigin = "";
-      el.style.transform = "";
+      // Keep finalTransform instead of clearing — clearing causes React to
+      // lose sync with the DOM (it won't reapply its inline style until the
+      // next state change, so the window jumps to center).
+      el.style.transform = finalTransform;
       el.removeEventListener("transitionend", cleanup);
     };
     el.addEventListener("transitionend", cleanup);
-  }, [isMaximized, offset]);
+  }, [isMaximized, offset, isMobile, scale]);
 
   const [restoreReady, setRestoreReady] = useState(false);
 
@@ -223,6 +249,37 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [navigate]);
 
+  // Swipe gesture support for mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = contentRef.current;
+    if (!el) return;
+
+    let startX = 0;
+    let startY = 0;
+
+    function onTouchStart(e: TouchEvent) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      // Only trigger if horizontal swipe is dominant
+      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+        navigate(dx < 0 ? 1 : -1);
+      }
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isMobile, navigate]);
+
   const ActiveComponent = tabComponents[activeTab];
   const showWindow = windowState === "normal" || windowState === "maximized"
     || windowState === "minimizing" || windowState === "restoring";
@@ -232,7 +289,9 @@ export default function App() {
   let wrapperTransition = "none";
   let wrapperOpacity: number | undefined;
 
-  if (windowState === "minimizing") {
+  if (isMobile) {
+    wrapperTransform = "none";
+  } else if (windowState === "minimizing") {
     wrapperTransform = DOCK_TRANSFORM;
     wrapperTransition = ANIM_TRANSITION;
     wrapperOpacity = 0;
@@ -250,23 +309,23 @@ export default function App() {
   return (
     <div
       style={{
-        height: `calc(100vh / ${SCALE})`,
-        width: `calc(100vw / ${SCALE})`,
+        height: isMobile ? "100%" : `calc(100vh / ${scale})`,
+        width: isMobile ? "100%" : `calc(100vw / ${scale})`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         background: "#0C0E14",
-        padding: isMaximized ? 0 : "24px",
-        transform: `scale(${SCALE})`,
+        padding: isMaximized || isMobile ? 0 : "24px",
+        transform: isMobile ? "none" : `scale(${scale})`,
         transformOrigin: "top left",
         position: "relative",
-        overflow: "hidden",
+        overflow: isMobile ? "auto" : "hidden",
       }}
     >
       <BgLayer />
 
-      {/* Dock icon (minimizing + minimized + restoring) */}
-      {(windowState === "minimizing" || windowState === "minimized" || windowState === "restoring") && (
+      {/* Dock icon (minimizing + minimized + restoring) — desktop only */}
+      {!isMobile && (windowState === "minimizing" || windowState === "minimized" || windowState === "restoring") && (
         <div
           onClick={handleRestore}
           style={{
@@ -322,9 +381,9 @@ export default function App() {
             transform: wrapperTransform,
             transition: wrapperTransition,
             opacity: wrapperOpacity,
-            width: isMaximized ? `calc(100vw / ${SCALE})` : "100%",
-            height: isMaximized ? `calc(100vh / ${SCALE})` : "auto",
-            maxWidth: isMaximized ? "none" : 1200,
+            width: isMobile ? "100%" : isMaximized ? `calc(100vw / ${scale})` : "100%",
+            height: isMobile ? "100%" : isMaximized ? `calc(100vh / ${scale})` : "auto",
+            maxWidth: isMaximized || isMobile ? "none" : 1200,
           }}
         >
           <TerminalChrome
@@ -333,23 +392,26 @@ export default function App() {
             onMinimize={handleMinimize}
             onMaximize={handleMaximize}
             isMaximized={isMaximized}
+            isMobile={isMobile}
           >
             <TabBar
               tabs={[...tabs]}
               active={activeTab}
               onSelect={setActiveTab}
+              isMobile={isMobile}
             />
             <div
+              ref={contentRef}
               style={{
                 flex: 1,
                 overflow: "auto",
-                padding: "24px 32px",
+                padding: isMobile ? "16px" : "24px 32px",
                 background: colors.bg,
               }}
             >
               <ActiveComponent />
             </div>
-            <Footer />
+            <Footer isMobile={isMobile} />
           </TerminalChrome>
         </div>
       )}

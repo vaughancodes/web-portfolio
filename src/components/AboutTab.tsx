@@ -1,19 +1,26 @@
-import { profile, asciiBanner, bannerColors } from "../data";
+import { profile, asciiBanner, danielBanner, vaughanBanner, bannerColors } from "../data";
 import { colors } from "../theme";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 export function AboutTab() {
+  const isMobile = useIsMobile();
+
+  const bannerLines = isMobile
+    ? [...danielBanner, ...vaughanBanner]
+    : asciiBanner;
+
   return (
     <div>
       {/* ASCII Banner */}
       <pre
         style={{
-          fontSize: "clamp(11px, 1.8vw, 18px)",
+          fontSize: isMobile ? "clamp(8px, 3.2vw, 14px)" : "clamp(11px, 1.8vw, 18px)",
           lineHeight: 1.2,
           margin: 0,
           marginBottom: 16,
         }}
       >
-        {asciiBanner.map((line, i) => (
+        {bannerLines.map((line, i) => (
           <div key={i} style={{ color: bannerColors[i % bannerColors.length] }}>
             {line}
           </div>

@@ -1,7 +1,9 @@
 import { contacts, urlFor } from "../data";
 import { colors, contactLabelColors } from "../theme";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 export function ContactTab() {
+  const isMobile = useIsMobile();
   return (
     <div>
       <h2
@@ -35,11 +37,12 @@ export function ContactTab() {
           const url = urlFor(c.label, c.value);
 
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ color, fontWeight: 700, width: 18, textAlign: "center" }}>
                 {c.icon}
               </span>
               <span
+                className="contact-label"
                 style={{
                   color,
                   fontWeight: 700,
@@ -75,7 +78,14 @@ export function ContactTab() {
                     >
                       SSH
                     </a>
-                    {")"}<span style={{ whiteSpace: "pre" }}>{"\t"}</span>{"// you're already here!"}
+                    {")"}
+                    {isMobile ? (
+                      <div style={{ paddingLeft: 32, color: colors.dim }}>
+                        {"// you're already here!"}
+                      </div>
+                    ) : (
+                      <><span style={{ whiteSpace: "pre" }}>{"\t"}</span>{"// you're already here!"}</>
+                    )}
                   </span>
                 </span>
               ) : url ? (

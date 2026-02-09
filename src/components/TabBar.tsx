@@ -5,9 +5,10 @@ interface TabBarProps {
   tabs: string[];
   active: TabName;
   onSelect: (tab: TabName) => void;
+  isMobile?: boolean;
 }
 
-export function TabBar({ tabs, active, onSelect }: TabBarProps) {
+export function TabBar({ tabs, active, onSelect, isMobile }: TabBarProps) {
   return (
     <div
       style={{
@@ -15,7 +16,17 @@ export function TabBar({ tabs, active, onSelect }: TabBarProps) {
         background: colors.bgLight,
         borderBottom: `2px solid ${colors.accent}`,
         flexShrink: 0,
+        ...(isMobile
+          ? {
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }
+          : {}),
       }}
+      // Hide scrollbar on webkit for mobile
+      className={isMobile ? "mobile-tab-bar" : undefined}
     >
       {tabs.map((tab) => {
         const isActive = tab === active;
@@ -27,13 +38,15 @@ export function TabBar({ tabs, active, onSelect }: TabBarProps) {
               background: isActive ? colors.accent : "transparent",
               color: isActive ? colors.white : colors.muted,
               border: "none",
-              padding: "10px 24px",
+              padding: isMobile ? "8px 14px" : "10px 24px",
               fontFamily: "inherit",
-              fontSize: 16,
+              fontSize: isMobile ? 14 : 16,
               fontWeight: isActive ? 700 : 400,
               cursor: "pointer",
               transition: "all 0.15s ease",
               letterSpacing: "0.02em",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
             onMouseEnter={(e) => {
               if (!isActive)
