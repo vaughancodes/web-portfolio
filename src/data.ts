@@ -115,7 +115,7 @@ export const projects: Project[] = [
     description:
       "This very site! A React-based terminal-themed portfolio inspired by the SSH version.",
     tech: ["React", "TypeScript", "Vite"],
-    url: "github.com/vaughancodes/vaughan.codes",
+    url: "github.com/vaughancodes/web-portfolio",
   },
 ];
 
