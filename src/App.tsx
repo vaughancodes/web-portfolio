@@ -50,7 +50,7 @@ const tabComponents: Record<TabName, React.FC> = {
   Contact: ContactTab,
 };
 
-const SCALE = 1.0;
+const SCALE = 1.25;
 
 type WindowState = "normal" | "minimizing" | "minimized" | "restoring" | "maximized" | "closed";
 
