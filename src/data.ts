@@ -134,6 +134,34 @@ export const projects: Project[] = [
     tech: ["React", "TypeScript", "Vite"],
     url: "github.com/vaughancodes/web-portfolio",
   },
+  {
+    name: "Suipi",
+    description:
+      "Web-based, mobile/desktop compatible implementation of the Samoan card game, Suipi.",
+    tech: ["Python", "Flask", "SQLAlchemy", "PostgreSQL"],
+    url: "github.com/vaughancodes/Suipi",
+  },
+  {
+    name: "triarb-detector",
+    description:
+      "Tool for detecting triangular arbitrage opportunities across multiple crypto exchanges.",
+    tech: ["Python", "ccxt", "NetworkX"],
+    url: "github.com/vaughancodes/triarb-detector",
+  },
+  {
+    name: "arduino-uno-cw-keyer",
+    description:
+      "Sketches and diagrams for utilizing an Arduino UNO (or compatibles) as a CW keyer.",
+    tech: ["C++", "Arduino"],
+    url: "github.com/vaughancodes/arduino-uno-cw-keyer",
+  },
+  {
+    name: "do-i-own-it",
+    description:
+      "Web application for tracking owned physical media.",
+    tech: ["Python", "Flask", "SQLAlchemy", "PostgreSQL"],
+    url: "github.com/vaughancodes/do-i-own-it",
+  },
 ];
 
 export const skillGroups: SkillGroup[] = [
