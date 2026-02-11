@@ -64,6 +64,9 @@ const MAXIMIZE_EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
 
 const SWIPE_THRESHOLD = 50;
 
+const MIN_WIDTH = 400;
+const MIN_HEIGHT = 300;
+
 function BgLayer() {
   return (
     <div
@@ -86,11 +89,21 @@ export default function App() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabName>("About");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [windowState, setWindowState] = useState<WindowState>("normal");
-  const preMaxRef = useRef({ x: 0, y: 0 });
+  const preMaxRef = useRef<{ x: number; y: number; size: { w: number; h: number } | null }>({ x: 0, y: 0, size: null });
   const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
+  const resize = useRef<{
+    dir: string;
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    startOx: number;
+    startOy: number;
+  } | null>(null);
 
   const scale = isMobile ? 1 : DESKTOP_SCALE;
 
@@ -109,16 +122,66 @@ export default function App() {
     drag.current = { startX: e.clientX, startY: e.clientY, ox: offset.x, oy: offset.y };
   }, [offset, isMaximized, isMobile]);
 
+  const handleResizeMouseDown = useCallback((dir: string, e: MouseEvent) => {
+    if (isMaximized || isMobile) return;
+    e.preventDefault();
+    const el = wrapperRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const currentW = size ? size.w : rect.width / scale;
+    const currentH = size ? size.h : rect.height / scale;
+    resize.current = {
+      dir,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: currentW,
+      startH: currentH,
+      startOx: offset.x,
+      startOy: offset.y,
+    };
+  }, [isMaximized, isMobile, size, offset, scale]);
+
   useEffect(() => {
     if (isMobile) return;
     function onMove(e: globalThis.MouseEvent) {
-      if (!drag.current) return;
-      const dx = (e.clientX - drag.current.startX) / scale;
-      const dy = (e.clientY - drag.current.startY) / scale;
-      setOffset({ x: drag.current.ox + dx, y: drag.current.oy + dy });
+      if (drag.current) {
+        const dx = (e.clientX - drag.current.startX) / scale;
+        const dy = (e.clientY - drag.current.startY) / scale;
+        setOffset({ x: drag.current.ox + dx, y: drag.current.oy + dy });
+      } else if (resize.current) {
+        const r = resize.current;
+        const dx = (e.clientX - r.startX) / scale;
+        const dy = (e.clientY - r.startY) / scale;
+        let newW = r.startW;
+        let newH = r.startH;
+        let newOx = r.startOx;
+        let newOy = r.startOy;
+
+        if (r.dir.includes("e")) newW = r.startW + dx;
+        if (r.dir.includes("w")) { newW = r.startW - dx; newOx = r.startOx + dx; }
+        if (r.dir.includes("s")) newH = r.startH + dy;
+        if (r.dir.includes("n")) { newH = r.startH - dy; newOy = r.startOy + dy; }
+
+        if (newW < MIN_WIDTH) {
+          if (r.dir.includes("w")) newOx = r.startOx + (r.startW - MIN_WIDTH);
+          newW = MIN_WIDTH;
+        }
+        if (newH < MIN_HEIGHT) {
+          if (r.dir.includes("n")) newOy = r.startOy + (r.startH - MIN_HEIGHT);
+          newH = MIN_HEIGHT;
+        }
+
+        // Compensate for flex centering shifting the window when size changes
+        newOx += (newW - r.startW) / 2;
+        newOy += (newH - r.startH) / 2;
+
+        setSize({ w: newW, h: newH });
+        setOffset({ x: newOx, y: newOy });
+      }
     }
     function onUp() {
       drag.current = null;
+      resize.current = null;
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -150,10 +213,11 @@ export default function App() {
     // Update layout synchronously
     flushSync(() => {
       if (isMaximized) {
-        setOffset(preMaxRef.current);
+        setOffset({ x: preMaxRef.current.x, y: preMaxRef.current.y });
+        setSize(preMaxRef.current.size);
         setWindowState("normal");
       } else {
-        preMaxRef.current = { x: offset.x, y: offset.y };
+        preMaxRef.current = { x: offset.x, y: offset.y, size };
         setOffset({ x: 0, y: 0 });
         setWindowState("maximized");
       }
@@ -197,7 +261,7 @@ export default function App() {
       el.removeEventListener("transitionend", cleanup);
     };
     el.addEventListener("transitionend", cleanup);
-  }, [isMaximized, offset, isMobile, scale]);
+  }, [isMaximized, offset, isMobile, scale, size]);
 
   const [restoreReady, setRestoreReady] = useState(false);
 
@@ -381,9 +445,9 @@ export default function App() {
             transform: wrapperTransform,
             transition: wrapperTransition,
             opacity: wrapperOpacity,
-            width: isMobile ? "100%" : isMaximized ? `calc(100vw / ${scale})` : "100%",
-            height: isMobile ? "100%" : isMaximized ? `calc(100vh / ${scale})` : "auto",
-            maxWidth: isMaximized || isMobile ? "none" : 1200,
+            width: isMobile ? "100%" : isMaximized ? `calc(100vw / ${scale})` : size ? size.w : "100%",
+            height: isMobile ? "100%" : isMaximized ? `calc(100vh / ${scale})` : size ? size.h : "auto",
+            maxWidth: isMaximized || isMobile ? "none" : size ? "none" : 1200,
           }}
         >
           <TerminalChrome
@@ -393,6 +457,8 @@ export default function App() {
             onMaximize={handleMaximize}
             isMaximized={isMaximized}
             isMobile={isMobile}
+            size={size}
+            onResizeHandleMouseDown={handleResizeMouseDown}
           >
             <TabBar
               tabs={[...tabs]}

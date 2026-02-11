@@ -9,6 +9,8 @@ export function TerminalChrome({
   onMaximize,
   isMaximized,
   isMobile,
+  size,
+  onResizeHandleMouseDown,
 }: {
   children: ReactNode;
   onTitleBarMouseDown?: MouseEventHandler<HTMLDivElement>;
@@ -17,6 +19,8 @@ export function TerminalChrome({
   onMaximize?: () => void;
   isMaximized?: boolean;
   isMobile?: boolean;
+  size?: { w: number; h: number } | null;
+  onResizeHandleMouseDown?: (dir: string, e: MouseEvent) => void;
 }) {
   const btnClick = (handler?: () => void) => (e: MouseEvent) => {
     e.stopPropagation();
@@ -29,9 +33,9 @@ export function TerminalChrome({
     <div
       style={{
         width: "100%",
-        maxWidth: fullscreen ? "none" : 1200,
-        height: fullscreen ? "100%" : "calc(100vh - 48px)",
-        maxHeight: fullscreen ? "none" : 1000,
+        maxWidth: fullscreen ? "none" : size ? "none" : 1200,
+        height: fullscreen ? "100%" : size ? "100%" : "calc(100vh - 48px)",
+        maxHeight: fullscreen ? "none" : size ? "none" : 1000,
         display: "flex",
         flexDirection: "column",
         borderRadius: fullscreen ? 0 : 10,
@@ -108,6 +112,19 @@ export function TerminalChrome({
         </div>
         {!isMobile && <div style={{ width: 52 }} />}
       </div>
+      {/* Resize handles — desktop only, non-maximized */}
+      {!fullscreen && onResizeHandleMouseDown && (
+        <>
+          <div onMouseDown={(e) => onResizeHandleMouseDown("n", e)} style={{ position: "absolute", top: 0, left: 10, right: 10, height: 6, cursor: "ns-resize", zIndex: 10 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("s", e)} style={{ position: "absolute", bottom: 0, left: 10, right: 10, height: 6, cursor: "ns-resize", zIndex: 10 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("e", e)} style={{ position: "absolute", top: 10, right: 0, bottom: 10, width: 6, cursor: "ew-resize", zIndex: 10 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("w", e)} style={{ position: "absolute", top: 10, left: 0, bottom: 10, width: 6, cursor: "ew-resize", zIndex: 10 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("nw", e)} style={{ position: "absolute", top: 0, left: 0, width: 10, height: 10, cursor: "nwse-resize", zIndex: 11 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("ne", e)} style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, cursor: "nesw-resize", zIndex: 11 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("sw", e)} style={{ position: "absolute", bottom: 0, left: 0, width: 10, height: 10, cursor: "nesw-resize", zIndex: 11 }} />
+          <div onMouseDown={(e) => onResizeHandleMouseDown("se", e)} style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, cursor: "nwse-resize", zIndex: 11 }} />
+        </>
+      )}
       {children}
     </div>
   );
