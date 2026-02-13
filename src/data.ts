@@ -121,18 +121,18 @@ export const experiences: Experience[] = [
 
 export const projects: Project[] = [
   {
-    name: "ssh-portfolio",
+    name: "Triarb Detector",
     description:
-      "A terminal-based portfolio served over SSH, built with Go and the Charm ecosystem.",
-    tech: ["Go", "Wish", "Bubble Tea", "Lip Gloss"],
-    url: "github.com/vaughancodes/ssh-portfolio",
+      "Tool for detecting triangular arbitrage opportunities across multiple crypto exchanges.",
+    tech: ["Python", "ccxt", "NetworkX"],
+    url: "github.com/vaughancodes/triarb-detector",
   },
   {
-    name: "web-portfolio",
+    name: "Do I Own It?",
     description:
-      "This very site! A React-based terminal-themed portfolio inspired by the SSH version.",
-    tech: ["React", "TypeScript", "Vite"],
-    url: "github.com/vaughancodes/web-portfolio",
+      "Web application for tracking owned physical media.",
+    tech: ["Python", "Flask", "SQLAlchemy", "PostgreSQL"],
+    url: "github.com/vaughancodes/do-i-own-it",
   },
   {
     name: "Suipi",
@@ -142,25 +142,25 @@ export const projects: Project[] = [
     url: "github.com/vaughancodes/Suipi",
   },
   {
-    name: "triarb-detector",
+    name: "SSH Portfolio",
     description:
-      "Tool for detecting triangular arbitrage opportunities across multiple crypto exchanges.",
-    tech: ["Python", "ccxt", "NetworkX"],
-    url: "github.com/vaughancodes/triarb-detector",
+      "A terminal-based portfolio served over SSH, built with Go and the Charm ecosystem.",
+    tech: ["Go", "Wish", "Bubble Tea", "Lip Gloss"],
+    url: "github.com/vaughancodes/ssh-portfolio",
   },
   {
-    name: "arduino-uno-cw-keyer",
+    name: "Web Portfolio",
+    description:
+      "This very site! A React-based terminal-themed portfolio inspired by the SSH version.",
+    tech: ["React", "TypeScript", "Vite"],
+    url: "github.com/vaughancodes/web-portfolio",
+  },
+  {
+    name: "Arduino UNO CW Keyer",
     description:
       "Sketches and diagrams for utilizing an Arduino UNO (or compatibles) as a CW keyer.",
     tech: ["C++", "Arduino"],
     url: "github.com/vaughancodes/arduino-uno-cw-keyer",
-  },
-  {
-    name: "do-i-own-it",
-    description:
-      "Web application for tracking owned physical media.",
-    tech: ["Python", "Flask", "SQLAlchemy", "PostgreSQL"],
-    url: "github.com/vaughancodes/do-i-own-it",
   },
 ];
 
@@ -220,8 +220,8 @@ export const tabs = [
   "About",
   "Experience",
   "Projects",
-  "Skills",
   "Education",
+  "Skills",
   "Contact",
 ] as const;
 
